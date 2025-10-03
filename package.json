@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "migrate": "sequelize db:migrate",
+    "seed": "sequelize db:seed:all",
     "start": "node app.js",
     "start:dev": "nodemon app.js",
     "docker:build": "docker build -t backtask-app .",
