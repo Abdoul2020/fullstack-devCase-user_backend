@@ -9,6 +9,14 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: "postgres",
     seederStorage: "sequelize",
+    migrationStorage: "sequelize",
+    migrationStorageTableName: "SequelizeMeta",
+    migrations: {
+      directory: "./db/migrations",
+    },
+    models: {
+      directory: "./db/models",
+    },
   },
   test: {
     username: "root",
@@ -16,6 +24,14 @@ module.exports = {
     database: "database_test",
     host: "127.0.0.1",
     dialect: "mysql",
+    migrationStorage: "sequelize",
+    migrationStorageTableName: "SequelizeMeta",
+    migrations: {
+      directory: "./db/migrations",
+    },
+    models: {
+      directory: "./db/models",
+    },
   },
   production: {
     username: process.env.DB_USERNAME,
@@ -25,5 +41,13 @@ module.exports = {
     port: process.env.DB_PORT,
     dialect: "postgres",
     seederStorage: "sequelize",
+    migrationStorage: "sequelize",
+    migrationStorageTableName: "SequelizeMeta",
+    migrations: {
+      directory: "./db/migrations",
+    },
+    models: {
+      directory: "./db/models",
+    },
   },
 };

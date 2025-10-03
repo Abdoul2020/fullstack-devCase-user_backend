@@ -1,12 +1,12 @@
 const { Sequelize } = require("sequelize");
-const user = require("../db/models/user");
+const { user } = require("../db/models");
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const bcrypt = require("bcrypt");
 
 // Get all users (except admin)
 const getAllUser = catchAsync(async (req, res, next) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 10, search, isActive, createdBy } = req.query;
   const offset = (page - 1) * limit;
 
   let whereClause = {
@@ -24,9 +24,24 @@ const getAllUser = catchAsync(async (req, res, next) => {
     ];
   }
 
+  // Add isActive filter
+  if (isActive !== undefined) {
+    whereClause.isActive = isActive === 'true';
+  }
+
+  // Add createdBy filter
+  if (createdBy) {
+    whereClause.createdBy = createdBy;
+  }
+
   const users = await user.findAndCountAll({
     where: whereClause,
-    attributes: { exclude: ["password"] },
+    attributes: { exclude: ["password","deletedAt"] },
+    include: [{
+      association: 'creator',
+      required: false,
+      attributes: ['id', 'firstName', 'lastName', 'email']
+    }],
     limit: parseInt(limit),
     offset: parseInt(offset),
     order: [["createdAt", "DESC"]],
@@ -49,6 +64,11 @@ const getUserById = catchAsync(async (req, res, next) => {
 
   const foundUser = await user.findByPk(id, {
     attributes: { exclude: ["password", "deletedAt"] },
+    include: [{
+      association: 'creator',
+      required: false,
+      attributes: ['id', 'firstName', 'lastName', 'email']
+    }]
   });
 
   if (!foundUser) {
@@ -70,13 +90,30 @@ const getUserById = catchAsync(async (req, res, next) => {
 
 // Create new user
 const createUser = catchAsync(async (req, res, next) => {
-  const { userType, firstName, lastName, email, password, confirmPassword } =
-    req.body;
+  const { 
+    userType, 
+    firstName, 
+    lastName, 
+    email, 
+    password, 
+    confirmPassword,
+    isActive = true,
+    avatarUrl,
+    createdBy
+  } = req.body;
 
   // Check if user already exists
   const existingUser = await user.findOne({ where: { email } });
   if (existingUser) {
     return next(new AppError("User with this email already exists", 400));
+  }
+
+  // Validate createdBy if provided
+  if (createdBy) {
+    const creator = await user.findByPk(createdBy);
+    if (!creator) {
+      return next(new AppError("Invalid createdBy user ID", 400));
+    }
   }
 
   // Create new user
@@ -85,16 +122,27 @@ const createUser = catchAsync(async (req, res, next) => {
     firstName,
     lastName,
     email,
-    password,
     confirmPassword,
+    isActive,
+    avatarUrl,
+    createdBy: createdBy || req.user?.id, 
   });
 
   if (!newUser) {
     return next(new AppError("Failed to create user", 400));
   }
 
-  const result = newUser.toJSON();
-  delete result.password;
+  // Get the user with creator information
+  const userWithCreator = await user.findByPk(newUser.id, {
+    attributes: { exclude: ["password"] },
+    include: [{
+      association: 'creator',
+      required: false,
+      attributes: ['id', 'firstName', 'lastName', 'email']
+    }]
+  });
+
+  const result = userWithCreator.toJSON();
   delete result.deletedAt;
 
   return res.status(201).json({
@@ -133,6 +181,14 @@ const updateUser = catchAsync(async (req, res, next) => {
     }
   }
 
+  // Validate createdBy if being updated
+  if (updateData.createdBy) {
+    const creator = await user.findByPk(updateData.createdBy);
+    if (!creator) {
+      return next(new AppError("Invalid createdBy user ID", 400));
+    }
+  }
+
   // Handle password update
   if (updateData.password && updateData.confirmPassword) {
     if (updateData.password !== updateData.confirmPassword) {
@@ -152,9 +208,13 @@ const updateUser = catchAsync(async (req, res, next) => {
   // Update the user
   await foundUser.update(updateData);
 
-  // Get updated user without password
   const updatedUser = await user.findByPk(id, {
     attributes: { exclude: ["password"] },
+    include: [{
+      association: 'creator',
+      required: false,
+      attributes: ['id', 'firstName', 'lastName', 'email']
+    }]
   });
 
   return res.status(200).json({
@@ -211,6 +271,11 @@ const updateCurrentUser = catchAsync(async (req, res, next) => {
     delete updateData.userType;
   }
 
+  // Prevent updating isActive for current user (only admin can do this)
+  if (updateData.isActive !== undefined) {
+    delete updateData.isActive;
+  }
+
   // Check if email is being updated and if it already exists
   if (updateData.email && updateData.email !== currentUser.email) {
     const existingUser = await user.findOne({
@@ -255,6 +320,50 @@ const updateCurrentUser = catchAsync(async (req, res, next) => {
   });
 });
 
+// Activate user
+const activateUser = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const foundUser = await user.findByPk(id);
+  if (!foundUser) {
+    return next(new AppError("User not found", 404));
+  }
+
+  // Check if trying to activate admin user (userType '0')
+  if (foundUser.userType === "0") {
+    return next(new AppError("Cannot modify admin user", 403));
+  }
+
+  await foundUser.update({ isActive: true });
+
+  return res.status(200).json({
+    status: "success",
+    message: "User activated successfully",
+  });
+});
+
+// Deactivate user
+const deactivateUser = catchAsync(async (req, res, next) => {
+  const { id } = req.params;
+
+  const foundUser = await user.findByPk(id);
+  if (!foundUser) {
+    return next(new AppError("User not found", 404));
+  }
+
+  // Check if trying to deactivate admin user (userType '0')
+  if (foundUser.userType === "0") {
+    return next(new AppError("Cannot modify admin user", 403));
+  }
+
+  await foundUser.update({ isActive: false });
+
+  return res.status(200).json({
+    status: "success",
+    message: "User deactivated successfully",
+  });
+});
+
 module.exports = {
   getAllUser,
   getUserById,
@@ -263,4 +372,6 @@ module.exports = {
   deleteUser,
   getCurrentUser,
   updateCurrentUser,
+  activateUser,
+  deactivateUser,
 };

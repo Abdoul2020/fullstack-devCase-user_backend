@@ -16,12 +16,33 @@ module.exports = {
       lastName: {
         type: Sequelize.STRING,
       },
+      isActive: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        allowNull: false,
+      },
+      avatarUrl: {
+        type: Sequelize.STRING,
+        allowNull: true,
+        validate: {
+          isUrl: true,
+        },
+      },
+
       email: {
         type: Sequelize.STRING,
         unique: true,
       },
       password: {
         type: Sequelize.STRING,
+      },
+      createdBy: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: "user",
+          key: "id",
+        },
       },
       createdAt: {
         allowNull: false,

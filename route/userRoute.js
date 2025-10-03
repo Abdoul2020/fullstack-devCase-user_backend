@@ -6,7 +6,9 @@ const {
     updateUser, 
     deleteUser,
     getCurrentUser,
-    updateCurrentUser
+    updateCurrentUser,
+    activateUser,
+    deactivateUser
 } = require('../controller/userController');
 const { 
     validate, 
@@ -32,5 +34,12 @@ router.route('/:id')
     .get(authenticateToken, restrictTo('0'), validate(getUserByIdSchema), getUserById)
     .patch(authenticateToken, restrictTo('0'), validate(updateUserSchema), updateUser)
     .delete(authenticateToken, restrictTo('0'), validate(deleteUserSchema), deleteUser);
+
+// User activation/deactivation routes (Admin only)
+router.route('/:id/activate')
+    .patch(authenticateToken, restrictTo('0'), validate(getUserByIdSchema), activateUser);
+
+router.route('/:id/deactivate')
+    .patch(authenticateToken, restrictTo('0'), validate(getUserByIdSchema), deactivateUser);
 
 module.exports = router;

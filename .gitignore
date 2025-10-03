@@ -1,0 +1,52 @@
+# Node / npm
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
+
+# TypeScript
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+pids/
+*.pid
+*.seed.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Next.js / React (frontend)
+.next/
+out/
+.cache/
+/.vercel
+.vercel/
+
+# Misc
+.Dockerfile.prod
+docker-compose.override.yml
+docker-compose.override.*.yml
+
+# If using Editor or tooling temp files
+*.swp
+*.swo
+*~

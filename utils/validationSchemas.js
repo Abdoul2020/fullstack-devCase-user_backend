@@ -22,7 +22,16 @@ const createUserSchema = z.object({
       .max(100, 'Password must be less than 100 characters')
       .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one lowercase letter, one uppercase letter, and one number'),
     confirmPassword: z.string()
-      .min(8, 'Confirm password must be at least 8 characters long')
+      .min(8, 'Confirm password must be at least 8 characters long'),
+    isActive: z.boolean().optional(),
+    avatarUrl: z.string()
+      .url('Avatar URL must be a valid URL')
+      .optional()
+      .or(z.literal('')),
+    createdBy: z.number()
+      .int('CreatedBy must be a valid integer')
+      .positive('CreatedBy must be a positive number')
+      .optional()
   }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -53,6 +62,15 @@ const updateUserSchema = z.object({
       .optional(),
     confirmPassword: z.string()
       .min(8, 'Confirm password must be at least 8 characters long')
+      .optional(),
+    isActive: z.boolean().optional(),
+    avatarUrl: z.string()
+      .url('Avatar URL must be a valid URL')
+      .optional()
+      .or(z.literal('')),
+    createdBy: z.number()
+      .int('CreatedBy must be a valid integer')
+      .positive('CreatedBy must be a positive number')
       .optional()
   }).refine((data) => {
     if (data.password && data.confirmPassword) {

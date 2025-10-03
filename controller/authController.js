@@ -1,4 +1,4 @@
-const user = require("../db/models/user");
+const { user } = require("../db/models");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const AppError = require("../utils/appError");
@@ -14,19 +14,36 @@ const generateToken = (payload) => {
 // signup controller
 
 const signUp = catchAsync(async (req, res, next) => {
-  const body = req.body;
+  const {
+    userType,
+    firstName,
+    lastName,
+    email,
+    password,
+    confirmPassword,
+    isActive,
+    avatarUrl,
+  } = req.body;
 
-  if (!["1", "2"].includes(body.userType)) {
+  if (!["1", "2"].includes(userType)) {
     return next(new AppError("User type is not valid", 400));
   }
 
+  // Check if user already exists
+  const existingUser = await user.findOne({ where: { email } });
+  if (existingUser) {
+    return next(new AppError("User with this email already exists", 400));
+  }
+
   const newUser = await user.create({
-    userType: body.userType,
-    firstName: body.firstName,
-    lastName: body.lastName,
-    email: body.email,
-    password: body.password,
-    confirmPassword: body.confirmPassword,
+    userType,
+    firstName,
+    lastName,
+    email,
+    confirmPassword,
+    isActive: isActive !== undefined ? isActive : true,
+    avatarUrl: avatarUrl || null,
+    createdBy: null,
   });
 
   if (!newUser) {
